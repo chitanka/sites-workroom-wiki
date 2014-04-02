@@ -9,9 +9,11 @@
 !monobook/*
 !vector/
 !vector/*
+!workroom
 
 *.php
 !CologneBlue.php
 !Modern.php
 !MonoBook.php
 !Vector.php
+!Workroom.php
