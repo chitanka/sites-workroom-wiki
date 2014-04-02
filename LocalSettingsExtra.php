@@ -7,6 +7,8 @@ $wgFavicon = '/favicon.png';
 
 $wgNamespacesWithSubpages[NS_MAIN] = true;
 
+$wgAllowUserJs = true;
+$wgAllowUserCss = true;
 
 require_once( "$IP/extensions/ParserFunctions/ParserFunctions.php" );
 $wgPFEnableStringFunctions = true;
