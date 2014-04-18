@@ -12,7 +12,7 @@ $wgHooks['ParserFirstCallInit'][] = function(Parser $parser) {
 	});
 	return true;
 };
-
+/*
 $wgHooks['PageContentSave'][] = function($wikiPage, $user, $content, $summary, $isMinor, $isWatch, $section, $flags, $status) {
 	if ($content instanceof ProofreadPageContent) {
 		$content->getBody()->mText = preg_replace_callback('|(<sfb>)(.+)(</sfb>)|Ums', function($matches) {
@@ -20,3 +20,4 @@ $wgHooks['PageContentSave'][] = function($wikiPage, $user, $content, $summary, $
 		}, $content->getBody()->mText);
 	}
 };
+*/
