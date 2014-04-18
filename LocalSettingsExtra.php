@@ -55,7 +55,6 @@ require_once("$IP/extensions/sfb/sfb.php");
 $wgChitankaMenu = array(
 	'main' => array('url' => 'http://chitanka.info', 'text' => 'Библиотека'),
 	'forum' => array('url' => 'http://forum.chitanka.info', 'text' => 'Форум'),
-	'wiki' => array('url' => 'http://wiki.chitanka.info', 'text' => 'Уики'),
 	'wiki-workroom' => array('url' => 'http://wiki.workroom.chitanka.info', 'text' => 'Читалие', 'class' => 'current'),
 	'rechnik' => array('url' => 'http://rechnik.chitanka.info', 'text' => 'Речник'),
 	'gramofonche' => array('url' => 'http://gramofonche.chitanka.info', 'text' => 'Грамофонче'),
