@@ -53,12 +53,14 @@ $wgResourceModules['skins.workroom.styles'] = array(
 require_once("$IP/extensions/sfb/sfb.php");
 
 $wgChitankaMenu = array(
-	'main' => array('url' => 'http://chitanka.info', 'text' => 'Библиотека'),
-	'forum' => array('url' => 'http://forum.chitanka.info', 'text' => 'Форум'),
-	'wiki-workroom' => array('url' => 'http://wiki.workroom.chitanka.info', 'text' => 'Читалие', 'class' => 'current'),
-	'rechnik' => array('url' => 'http://rechnik.chitanka.info', 'text' => 'Речник'),
-	'gramofonche' => array('url' => 'http://gramofonche.chitanka.info', 'text' => 'Грамофонче'),
-	'tools' => array('url' => 'http://tools.chitanka.info', 'text' => 'Инструменти'),
+	'main' => array('url' => '//chitanka.info', 'text' => 'Библиотека'),
+	'biblioman' => array('url' => '//biblioman.chitanka.info', 'text' => 'Библиоман'),
+	'forum' => array('url' => '//forum.chitanka.info', 'text' => 'Форум'),
+	'dachko' => array('url' => '//prevodi.chitanka.info', 'text' => 'Дачко'),
+	'wiki-workroom' => array('url' => '//wiki.workroom.chitanka.info', 'text' => 'Читалие', 'class' => 'current'),
+	'rechnik' => array('url' => '//rechnik.chitanka.info', 'text' => 'Речник'),
+	'gramofonche' => array('url' => '//gramofonche.chitanka.info', 'text' => 'Грамофонче'),
+	'tools' => array('url' => '//tools.chitanka.info', 'text' => 'Сръчко'),
 );
 
 $wgAnalyticsSnippet = '';
