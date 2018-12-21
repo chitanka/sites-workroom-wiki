@@ -56,11 +56,7 @@ function doAuthWithMylib($user, &$result) {
 
 		$user->saveSettings();
 	} else {
-		if ( ! $user->loadFromDatabase() ) {
-			// Can't load from ID, user is anonymous
-			return true;
-		}
-		$user->saveToCache();
+		$user->loadFromId();
 	}
 
 	$result = true; // skip the rest of the authentication process
@@ -76,21 +72,21 @@ function removeAuthUrls(&$personal_urls, $title) {
 	}
 
 	if ( isset($personal_urls['login']) ) {
-		$returnto = urlencode('http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+		$returnto = urlencode('//' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
 		$personal_urls['login'] = array(
 			'text' => 'Вход',
-			'href' => 'http://chitanka.info/login?returnto='.$returnto,
+			'href' => '//chitanka.info/login?returnto='.$returnto,
 		);
 		$personal_urls['register'] = array(
 			'text' => 'Регистрация',
-			'href' => 'http://chitanka.info/register?returnto='.$returnto,
+			'href' => '//chitanka.info/register?returnto='.$returnto,
 		);
 	}
 
 	if ( isset($personal_urls['logout']) ) {
 		$personal_urls['logout'] = array(
 			'text' => 'Изход',
-			'href' => 'http://chitanka.info/signout'
+			'href' => '//chitanka.info/signout'
 		);
 	}
 

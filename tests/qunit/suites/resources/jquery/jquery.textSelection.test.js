@@ -1,75 +1,4 @@
 ( function ( $ ) {
-
-	QUnit.module( 'jquery.textSelection', QUnit.newMwEnvironment() );
-
-	/**
-	 * Test factory for $.fn.textSelection( 'encapsulateText' )
-	 *
-	 * @param options {object} associative array containing:
-	 *   description {string}
-	 *   input {string}
-	 *   output {string}
-	 *   start {int} starting char for selection
-	 *   end {int} ending char for selection
-	 *   params {object} add'l parameters for $().textSelection( 'encapsulateText' )
-	 */
-	function encapsulateTest( options ) {
-		var opt = $.extend( {
-			description: '',
-			before: {},
-			after: {},
-			replace: {}
-		}, options );
-
-		opt.before = $.extend( {
-			text: '',
-			start: 0,
-			end: 0
-		}, opt.before );
-		opt.after = $.extend( {
-			text: '',
-			selected: null
-		}, opt.after );
-
-		QUnit.test( opt.description, function ( assert ) {
-			var $textarea, start, end, options, text,
-				tests = 1;
-			if ( opt.after.selected !== null ) {
-				tests++;
-			}
-			QUnit.expect( tests );
-
-			$textarea = $( '<textarea>' );
-
-			$( '#qunit-fixture' ).append( $textarea );
-
-			// This method is actually missing atm...
-			//$textarea.textSelection( 'setContents', opt.before.text);
-
-			// Won't work with the WikiEditor iframe?
-			$textarea.val( opt.before.text );
-
-			start = opt.before.start;
-			end = opt.before.end;
-
-			// Clone opt.replace
-			options = $.extend( {}, opt.replace );
-			options.selectionStart = start;
-			options.selectionEnd = end;
-			$textarea.textSelection( 'encapsulateSelection', options );
-
-			text = $textarea.textSelection( 'getContents' ).replace( /\r\n/g, '\n' );
-
-			assert.equal( text, opt.after.text, 'Checking full text after encapsulation' );
-
-			if ( opt.after.selected !== null ) {
-				var selected = $textarea.textSelection( 'getSelection' );
-				assert.equal( selected, opt.after.selected, 'Checking selected text after encapsulation.' );
-			}
-
-		} );
-	}
-
 	var caretSample,
 		sig = {
 			pre: '--~~~~'
@@ -94,6 +23,67 @@
 			ownline: true,
 			splitlines: true
 		};
+
+	QUnit.module( 'jquery.textSelection', QUnit.newMwEnvironment() );
+
+	/**
+	 * Test factory for $.fn.textSelection( 'encapsulateText' )
+	 *
+	 * @param {Object} options Associative configuration array
+	 * @param {string} options.description Description
+	 * @param {string} options.input Input
+	 * @param {string} options.output Output
+	 * @param {int} options.start Starting char for selection
+	 * @param {int} options.end Ending char for selection
+	 * @param {Object} options.params Additional parameters for $().textSelection( 'encapsulateText' )
+	 */
+	function encapsulateTest( options ) {
+		var opt = $.extend( {
+			description: '',
+			before: {},
+			after: {},
+			replace: {}
+		}, options );
+
+		opt.before = $.extend( {
+			text: '',
+			start: 0,
+			end: 0
+		}, opt.before );
+		opt.after = $.extend( {
+			text: '',
+			selected: null
+		}, opt.after );
+
+		QUnit.test( opt.description, function ( assert ) {
+			var $textarea, start, end, options, text, selected;
+
+			$textarea = $( '<textarea>' );
+
+			$( '#qunit-fixture' ).append( $textarea );
+
+			$textarea.textSelection( 'setContents', opt.before.text );
+
+			start = opt.before.start;
+			end = opt.before.end;
+
+			// Clone opt.replace
+			options = $.extend( {}, opt.replace );
+			options.selectionStart = start;
+			options.selectionEnd = end;
+			$textarea.textSelection( 'encapsulateSelection', options );
+
+			text = $textarea.textSelection( 'getContents' ).replace( /\r\n/g, '\n' );
+
+			assert.equal( text, opt.after.text, 'Checking full text after encapsulation' );
+
+			if ( opt.after.selected !== null ) {
+				selected = $textarea.textSelection( 'getSelection' );
+				assert.equal( selected, opt.after.selected, 'Checking selected text after encapsulation.' );
+			}
+
+		} );
+	}
 
 	encapsulateTest( {
 		description: 'Adding sig to end of text',
@@ -219,7 +209,7 @@
 	} );
 
 	function caretTest( options ) {
-		QUnit.test( options.description, 2, function ( assert ) {
+		QUnit.test( options.description, function ( assert ) {
 			var pos,
 				$textarea = $( '<textarea>' ).text( options.text );
 
@@ -233,31 +223,30 @@
 			}
 
 			function among( actual, expected, message ) {
-				if ( $.isArray( expected ) ) {
-					assert.ok( $.inArray( actual, expected ) !== -1, message + ' (got ' + actual + '; expected one of ' + expected.join( ', ' ) + ')' );
+				if ( Array.isArray( expected ) ) {
+					assert.ok( expected.indexOf( actual ) !== -1, message + ' (got ' + actual + '; expected one of ' + expected.join( ', ' ) + ')' );
 				} else {
 					assert.equal( actual, expected, message );
 				}
 			}
 
 			pos = $textarea.textSelection( 'getCaretPosition', { startAndEnd: true } );
-			among( pos[0], options.start, 'Caret start should be where we set it.' );
-			among( pos[1], options.end, 'Caret end should be where we set it.' );
+			among( pos[ 0 ], options.start, 'Caret start should be where we set it.' );
+			among( pos[ 1 ], options.end, 'Caret end should be where we set it.' );
 		} );
 	}
 
 	caretSample = 'Some big text that we like to work with. Nothing fancy... you know what I mean?';
 
-	/*
-	 // @broken: Disabled per bug 34820
-	 caretTest({
-	 description: 'getCaretPosition with original/empty selection - bug 31847 with IE 6/7/8',
-	 text: caretSample,
-	 start: [0, caretSample.length], // Opera and Firefox (prior to FF 6.0) default caret to the end of the box (caretSample.length)
-	 end: [0, caretSample.length], // Other browsers default it to the beginning (0), so check both.
-	 mode: 'get'
-	 });
-	 */
+	/* @broken: Disabled per T36820
+	caretTest({
+		description: 'getCaretPosition with original/empty selection - T33847 with IE 6/7/8',
+		text: caretSample,
+		start: [0, caretSample.length], // Opera and Firefox (prior to FF 6.0) default caret to the end of the box (caretSample.length)
+		end: [0, caretSample.length], // Other browsers default it to the beginning (0), so check both.
+		mode: 'get'
+	});
+	*/
 
 	caretTest( {
 		description: 'set/getCaretPosition with forced empty selection',

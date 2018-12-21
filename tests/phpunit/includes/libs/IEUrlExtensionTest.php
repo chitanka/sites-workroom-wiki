@@ -5,7 +5,10 @@
  * @todo tests below for findIE6Extension should be split into...
  *    ...a dataprovider and test method.
  */
-class IEUrlExtensionTest extends MediaWikiTestCase {
+class IEUrlExtensionTest extends PHPUnit\Framework\TestCase {
+
+	use MediaWikiCoversValidator;
+
 	/**
 	 * @covers IEUrlExtension::findIE6Extension
 	 */
@@ -168,6 +171,39 @@ class IEUrlExtensionTest extends MediaWikiTestCase {
 			'z',
 			IEUrlExtension::findIE6Extension( 'x.y.z' ),
 			'Two dots'
+		);
+	}
+
+	/**
+	 * @covers IEUrlExtension::findIE6Extension
+	 */
+	public function testScriptQuery() {
+		$this->assertEquals(
+			'php',
+			IEUrlExtension::findIE6Extension( 'example.php?foo=a&bar=b' ),
+			'Script with query'
+		);
+	}
+
+	/**
+	 * @covers IEUrlExtension::findIE6Extension
+	 */
+	public function testEscapedScriptQuery() {
+		$this->assertEquals(
+			'',
+			IEUrlExtension::findIE6Extension( 'example%2Ephp?foo=a&bar=b' ),
+			'Script with urlencoded dot and query'
+		);
+	}
+
+	/**
+	 * @covers IEUrlExtension::findIE6Extension
+	 */
+	public function testEscapedScriptQueryDot() {
+		$this->assertEquals(
+			'y',
+			IEUrlExtension::findIE6Extension( 'example%2Ephp?foo=a.x&bar=b.y' ),
+			'Script with urlencoded dot and query with dot'
 		);
 	}
 }

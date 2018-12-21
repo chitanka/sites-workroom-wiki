@@ -1,5 +1,7 @@
 <?php
 
+use Wikimedia\TestingAccessWrapper;
+
 /**
  * @covers DifferenceEngine
  *
@@ -8,7 +10,6 @@
  * @group Database
  * @group Diff
  *
- * @licence GNU GPL v2+
  * @author Katie Filbert < aude.wiki@gmail.com >
  */
 class DifferenceEngineTest extends MediaWikiTestCase {
@@ -39,14 +40,14 @@ class DifferenceEngineTest extends MediaWikiTestCase {
 	}
 
 	/**
-	 * @return int[] revision ids
+	 * @return int[] Revision ids
 	 */
 	protected function doEdits() {
 		$title = $this->getTitle();
 		$page = WikiPage::factory( $title );
 
-		$strings = array( "it is a kitten", "two kittens", "three kittens", "four kittens" );
-		$revisions = array();
+		$strings = [ "it is a kitten", "two kittens", "three kittens", "four kittens" ];
+		$revisions = [];
 
 		foreach ( $strings as $string ) {
 			$content = ContentHandler::makeContent( $string, $title );
@@ -72,11 +73,11 @@ class DifferenceEngineTest extends MediaWikiTestCase {
 	private function getMapDiffPrevNextCases() {
 		$revs = self::$revisions;
 
-		return array(
-			array( array( $revs[1], $revs[2] ), $revs[2], 'prev', 'diff=prev' ),
-			array( array( $revs[2], $revs[3] ), $revs[2], 'next', 'diff=next' ),
-			array( array( $revs[1], $revs[3] ), $revs[1], $revs[3], 'diff=' . $revs[3] )
-		);
+		return [
+			[ [ $revs[1], $revs[2] ], $revs[2], 'prev', 'diff=prev' ],
+			[ [ $revs[2], $revs[3] ], $revs[2], 'next', 'diff=next' ],
+			[ [ $revs[1], $revs[3] ], $revs[1], $revs[3], 'diff=' . $revs[3] ]
+		];
 	}
 
 	public function testLoadRevisionData() {
@@ -96,12 +97,12 @@ class DifferenceEngineTest extends MediaWikiTestCase {
 	private function getLoadRevisionDataCases() {
 		$revs = self::$revisions;
 
-		return array(
-			array( $revs[2], $revs[3], $revs[3], 'prev', 'diff=prev' ),
-			array( $revs[2], $revs[3], $revs[2], 'next', 'diff=next' ),
-			array( $revs[1], $revs[3], $revs[1], $revs[3], 'diff=' . $revs[3] ),
-			array( $revs[1], $revs[3], $revs[1], 0, 'diff=0' )
-		);
+		return [
+			[ $revs[2], $revs[3], $revs[3], 'prev', 'diff=prev' ],
+			[ $revs[2], $revs[3], $revs[2], 'next', 'diff=next' ],
+			[ $revs[1], $revs[3], $revs[1], $revs[3], 'diff=' . $revs[3] ],
+			[ $revs[1], $revs[3], $revs[1], 0, 'diff=0' ]
+		];
 	}
 
 	public function testGetOldid() {
@@ -116,6 +117,32 @@ class DifferenceEngineTest extends MediaWikiTestCase {
 
 		$diffEngine = new DifferenceEngine( $this->context, $revs[1], $revs[2], 2, true, false );
 		$this->assertEquals( $revs[2], $diffEngine->getNewid(), 'diff get new id' );
+	}
+
+	public function provideLocaliseTitleTooltipsTestData() {
+		return [
+			'moved paragraph left shoud get new location title' => [
+				'<a class="mw-diff-movedpara-left">⚫</a>',
+				'<a class="mw-diff-movedpara-left" title="(diff-paragraph-moved-tonew)">⚫</a>',
+			],
+			'moved paragraph right shoud get old location title' => [
+				'<a class="mw-diff-movedpara-right">⚫</a>',
+				'<a class="mw-diff-movedpara-right" title="(diff-paragraph-moved-toold)">⚫</a>',
+			],
+			'nothing changed when key not hit' => [
+				'<a class="mw-diff-movedpara-rightis">⚫</a>',
+				'<a class="mw-diff-movedpara-rightis">⚫</a>',
+			],
+		];
+	}
+
+	/**
+	 * @dataProvider provideLocaliseTitleTooltipsTestData
+	 */
+	public function testAddLocalisedTitleTooltips( $input, $expected ) {
+		$this->setContentLang( 'qqx' );
+		$diffEngine = TestingAccessWrapper::newFromObject( new DifferenceEngine() );
+		$this->assertEquals( $expected, $diffEngine->addLocalisedTitleTooltips( $input ) );
 	}
 
 }

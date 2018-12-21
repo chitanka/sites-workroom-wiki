@@ -3,7 +3,9 @@
 /**
  * @group Xml
  */
-class XmlJs extends MediaWikiTestCase {
+class XmlJsTest extends PHPUnit\Framework\TestCase {
+
+	use MediaWikiCoversValidator;
 
 	/**
 	 * @covers XmlJsCode::__construct
@@ -14,11 +16,11 @@ class XmlJs extends MediaWikiTestCase {
 		$this->assertEquals( $value, $obj->value );
 	}
 
-	public function provideConstruction() {
-		return array(
-			array( null ),
-			array( '' ),
-		);
+	public static function provideConstruction() {
+		return [
+			[ null ],
+			[ '' ],
+		];
 	}
 
 }

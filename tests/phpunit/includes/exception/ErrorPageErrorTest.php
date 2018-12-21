@@ -2,26 +2,12 @@
 
 /**
  * @covers ErrorPageError
- * @author Adam Shorland
+ * @author Addshore
  */
 class ErrorPageErrorTest extends MediaWikiTestCase {
 
-	private $wgOut;
-
-	protected function setUp() {
-		parent::setUp();
-		global $wgOut;
-		$this->wgOut = clone $wgOut;
-	}
-
-	protected function tearDown() {
-		global $wgOut;
-		$wgOut = $this->wgOut;
-		parent::tearDown();
-	}
-
 	private function getMockMessage() {
-		$mockMessage = $this->getMockBuilder( 'Message' )
+		$mockMessage = $this->getMockBuilder( Message::class )
 			->disableOriginalConstructor()
 			->getMock();
 		$mockMessage->expects( $this->once() )
@@ -36,7 +22,7 @@ class ErrorPageErrorTest extends MediaWikiTestCase {
 	public function testConstruction() {
 		$mockMessage = $this->getMockMessage();
 		$title = 'Foo';
-		$params = array( 'Baz' );
+		$params = [ 'Baz' ];
 		$e = new ErrorPageError( $title, $mockMessage, $params );
 		$this->assertEquals( $title, $e->title );
 		$this->assertEquals( $mockMessage, $e->msg );
@@ -46,22 +32,21 @@ class ErrorPageErrorTest extends MediaWikiTestCase {
 	public function testReport() {
 		$mockMessage = $this->getMockMessage();
 		$title = 'Foo';
-		$params = array( 'Baz' );
+		$params = [ 'Baz' ];
 
-		global $wgOut;
-		$wgOut = $this->getMockBuilder( 'OutputPage' )
+		$mock = $this->getMockBuilder( OutputPage::class )
 			->disableOriginalConstructor()
 			->getMock();
-		$wgOut->expects( $this->once() )
+		$mock->expects( $this->once() )
 			->method( 'showErrorPage' )
 			->with( $title, $mockMessage, $params );
-		$wgOut->expects( $this->once() )
+		$mock->expects( $this->once() )
 			->method( 'output' );
+		$this->setMwGlobals( 'wgOut', $mock );
+		$this->setMwGlobals( 'wgCommandLineMode', false );
 
 		$e = new ErrorPageError( $title, $mockMessage, $params );
 		$e->report();
 	}
-
-
 
 }

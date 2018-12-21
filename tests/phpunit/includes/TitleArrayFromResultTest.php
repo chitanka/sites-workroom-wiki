@@ -1,13 +1,15 @@
 <?php
 
 /**
- * @author Adam Shorland
+ * @author Addshore
  * @covers TitleArrayFromResult
  */
-class TitleArrayFromResultTest extends MediaWikiTestCase {
+class TitleArrayFromResultTest extends PHPUnit\Framework\TestCase {
+
+	use MediaWikiCoversValidator;
 
 	private function getMockResultWrapper( $row = null, $numRows = 1 ) {
-		$resultWrapper = $this->getMockBuilder( 'ResultWrapper' )
+		$resultWrapper = $this->getMockBuilder( Wikimedia\Rdbms\ResultWrapper::class )
 			->disableOriginalConstructor();
 
 		$resultWrapper = $resultWrapper->getMock();
@@ -59,17 +61,17 @@ class TitleArrayFromResultTest extends MediaWikiTestCase {
 
 		$this->assertEquals( $resultWrapper, $object->res );
 		$this->assertSame( 0, $object->key );
-		$this->assertInstanceOf( 'Title', $object->current );
+		$this->assertInstanceOf( Title::class, $object->current );
 		$this->assertEquals( $namespace, $object->current->mNamespace );
 		$this->assertEquals( $title, $object->current->mTextform );
 	}
 
-	public function provideNumberOfRows() {
-		return array(
-			array( 0 ),
-			array( 1 ),
-			array( 122 ),
-		);
+	public static function provideNumberOfRows() {
+		return [
+			[ 0 ],
+			[ 1 ],
+			[ 122 ],
+		];
 	}
 
 	/**
@@ -77,7 +79,10 @@ class TitleArrayFromResultTest extends MediaWikiTestCase {
 	 * @covers TitleArrayFromResult::count
 	 */
 	public function testCountWithVaryingValues( $numRows ) {
-		$object = $this->getTitleArrayFromResult( $this->getMockResultWrapper( $this->getRowWithTitle(), $numRows ) );
+		$object = $this->getTitleArrayFromResult( $this->getMockResultWrapper(
+			$this->getRowWithTitle(),
+			$numRows
+		) );
 		$this->assertEquals( $numRows, $object->count() );
 	}
 
@@ -89,16 +94,16 @@ class TitleArrayFromResultTest extends MediaWikiTestCase {
 		$title = 'foo';
 		$row = $this->getRowWithTitle( $namespace, $title );
 		$object = $this->getTitleArrayFromResult( $this->getMockResultWrapper( $row ) );
-		$this->assertInstanceOf( 'Title', $object->current() );
+		$this->assertInstanceOf( Title::class, $object->current() );
 		$this->assertEquals( $namespace, $object->current->mNamespace );
 		$this->assertEquals( $title, $object->current->mTextform );
 	}
 
 	public function provideTestValid() {
-		return array(
-			array( $this->getRowWithTitle(), true ),
-			array( false, false ),
-		);
+		return [
+			[ $this->getRowWithTitle(), true ],
+			[ false, false ],
+		];
 	}
 
 	/**
@@ -110,7 +115,7 @@ class TitleArrayFromResultTest extends MediaWikiTestCase {
 		$this->assertEquals( $expected, $object->valid() );
 	}
 
-	//@todo unit test for key()
-	//@todo unit test for next()
-	//@todo unit test for rewind()
+	// @todo unit test for key()
+	// @todo unit test for next()
+	// @todo unit test for rewind()
 }

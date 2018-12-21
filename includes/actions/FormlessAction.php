@@ -17,46 +17,22 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * @file
- */
-
-/**
- * @defgroup Actions Action done on pages
+ * @ingroup Actions
  */
 
 /**
  * An action which just does something, without showing a form first.
+ *
+ * @ingroup Actions
  */
 abstract class FormlessAction extends Action {
 
 	/**
 	 * Show something on GET request.
-	 * @return String|null will be added to the HTMLForm if present, or just added to the
+	 * @return string|null Will be added to the HTMLForm if present, or just added to the
 	 *     output if not.  Return null to not add anything
 	 */
 	abstract public function onView();
-
-	/**
-	 * We don't want an HTMLForm
-	 * @return bool
-	 */
-	protected function getFormFields() {
-		return false;
-	}
-
-	/**
-	 * @param $data Array
-	 * @return bool
-	 */
-	public function onSubmit( $data ) {
-		return false;
-	}
-
-	/**
-	 * @return bool
-	 */
-	public function onSuccess() {
-		return false;
-	}
 
 	public function show() {
 		$this->setHeaders();
@@ -65,36 +41,5 @@ abstract class FormlessAction extends Action {
 		$this->checkCanExecute( $this->getUser() );
 
 		$this->getOutput()->addHTML( $this->onView() );
-	}
-
-	/**
-	 * Execute the action silently, not giving any output.  Since these actions don't have
-	 * forms, they probably won't have any data, but some (eg rollback) may do
-	 * @param array $data values that would normally be in the GET request
-	 * @param bool $captureErrors whether to catch exceptions and just return false
-	 * @throws ErrorPageError|Exception
-	 * @return Bool whether execution was successful
-	 */
-	public function execute( array $data = null, $captureErrors = true ) {
-		try {
-			// Set a new context so output doesn't leak.
-			$this->context = clone $this->getContext();
-			if ( is_array( $data ) ) {
-				$this->context->setRequest( new FauxRequest( $data, false ) );
-			}
-
-			// This will throw exceptions if there's a problem
-			$this->checkCanExecute( $this->getUser() );
-
-			$this->onView();
-			return true;
-		}
-		catch ( ErrorPageError $e ) {
-			if ( $captureErrors ) {
-				return false;
-			} else {
-				throw $e;
-			}
-		}
 	}
 }

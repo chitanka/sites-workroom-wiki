@@ -23,22 +23,33 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-global $optionsWithArgs;
+// phpcs:ignore MediaWiki.NamingConventions.ValidGlobalName.wgPrefix
+global $optionsWithArgs, $optionsWithoutArgs;
+
 if ( !isset( $optionsWithArgs ) ) {
-	$optionsWithArgs = array();
+	$optionsWithArgs = [];
+}
+if ( !isset( $optionsWithoutArgs ) ) {
+	$optionsWithoutArgs = [];
 }
 
 class CommandLineInc extends Maintenance {
 	public function __construct() {
-		global $optionsWithArgs;
+		// phpcs:ignore MediaWiki.NamingConventions.ValidGlobalName.wgPrefix
+		global $optionsWithArgs, $optionsWithoutArgs;
+
 		parent::__construct();
 		foreach ( $optionsWithArgs as $name ) {
 			$this->addOption( $name, '', false, true );
+		}
+		foreach ( $optionsWithoutArgs as $name ) {
+			$this->addOption( $name, '', false, false );
 		}
 	}
 
 	/**
 	 * No help, it would just be misleading since it misses custom options
+	 * @param bool $force
 	 */
 	protected function maybeHelp( $force = false ) {
 		if ( !$force ) {
@@ -48,12 +59,13 @@ class CommandLineInc extends Maintenance {
 	}
 
 	public function execute() {
+		// phpcs:ignore MediaWiki.NamingConventions.ValidGlobalName.wgPrefix
 		global $args, $options;
+
 		$args = $this->mArgs;
 		$options = $this->mOptions;
 	}
 }
 
-$maintClass = 'CommandLineInc';
+$maintClass = CommandLineInc::class;
 require RUN_MAINTENANCE_IF_MAIN;
-

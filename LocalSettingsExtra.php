@@ -1,4 +1,8 @@
 <?php
+wfLoadSkin( 'MonoBook' );
+wfLoadSkin( 'Vector' );
+wfLoadSkin( 'Timeless' );
+
 # New user group for users whose edits should be autopatrolled
 $wgGroupPermissions['autopatrolled']['autopatrol'] = true;
 
@@ -10,7 +14,7 @@ $wgNamespacesWithSubpages[NS_MAIN] = true;
 $wgAllowUserJs = true;
 $wgAllowUserCss = true;
 
-require_once( "$IP/extensions/ParserFunctions/ParserFunctions.php" );
+wfLoadExtension( 'ParserFunctions' );
 $wgPFEnableStringFunctions = true;
 
 
@@ -22,14 +26,11 @@ $wgDjvuToXML = '/usr/bin/djvutoxml';
 $wgDjvuPostProcessor = "/usr/bin/ppmtojpeg";
 $wgDjvuOutputExtension = 'jpg';
 $wgMaxShellMemory = 202400;
-require_once( "$IP/extensions/ProofreadPage/ProofreadPage.php" );
 
+wfLoadExtension( 'ProofreadPage' );
+wfLoadExtension( 'LabeledSectionTransclusion' );
+wfLoadExtension( 'WikiEditor' );
 
-require_once( "$IP/extensions/LabeledSectionTransclusion/lst.php" );
-require_once( "$IP/extensions/LabeledSectionTransclusion/lsth.php" );
-
-
-require_once( "$IP/extensions/WikiEditor/WikiEditor.php" );
 # Enables use of WikiEditor by default but still allow users to disable it in preferences
 $wgDefaultUserOptions['usebetatoolbar'] = 1;
 $wgDefaultUserOptions['usebetatoolbar-cgd'] = 1;

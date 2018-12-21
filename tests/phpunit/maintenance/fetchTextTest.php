@@ -1,5 +1,15 @@
 <?php
 
+namespace MediaWiki\Tests\Maintenance;
+
+use ContentHandler;
+use FetchText;
+use MediaWikiTestCase;
+use MWException;
+use Title;
+use PHPUnit_Framework_ExpectationFailedException;
+use WikiPage;
+
 require_once __DIR__ . "/../../../maintenance/fetchText.php";
 
 /**
@@ -11,7 +21,7 @@ require_once __DIR__ . "/../../../maintenance/fetchText.php";
 class SemiMockedFetchText extends FetchText {
 
 	/**
-	 * @var String|null Text to pass as stdin
+	 * @var string|null Text to pass as stdin
 	 */
 	private $mockStdinText = null;
 
@@ -21,14 +31,14 @@ class SemiMockedFetchText extends FetchText {
 	private $mockSetUp = false;
 
 	/**
-	 * @var Array Invocation counters for the mocked aspects
+	 * @var array Invocation counters for the mocked aspects
 	 */
-	private $mockInvocations = array( 'getStdin' => 0 );
+	private $mockInvocations = [ 'getStdin' => 0 ];
 
 	/**
 	 * Data for the fake stdin
 	 *
-	 * @param $stdin String The string to be used instead of stdin
+	 * @param string $stdin The string to be used instead of stdin
 	 */
 	function mockStdin( $stdin ) {
 		$this->mockStdinText = $stdin;
@@ -38,7 +48,7 @@ class SemiMockedFetchText extends FetchText {
 	/**
 	 * Gets invocation counters for mocked methods.
 	 *
-	 * @return Array An array, whose keys are function names. The corresponding values
+	 * @return array An array, whose keys are function names. The corresponding values
 	 * denote the number of times the function has been invoked.
 	 */
 	function mockGetInvocations() {
@@ -75,11 +85,11 @@ class FetchTextTest extends MediaWikiTestCase {
 
 	// We add 5 Revisions for this test. Their corresponding text id's
 	// are stored in the following 5 variables.
-	private $textId1;
-	private $textId2;
-	private $textId3;
-	private $textId4;
-	private $textId5;
+	protected static $textId1;
+	protected static $textId2;
+	protected static $textId3;
+	protected static $textId4;
+	protected static $textId5;
 
 	/**
 	 * @var Exception|null As the current MediaWikiTestCase::run is not
@@ -88,57 +98,79 @@ class FetchTextTest extends MediaWikiTestCase {
 	 * we catch the exception and store it until we are in setUp and may
 	 * finally rethrow the exception without crashing the test suite.
 	 */
-	private $exceptionFromAddDBData;
+	protected static $exceptionFromAddDBDataOnce;
 
 	/**
-	 * @var FetchText the (mocked) FetchText that is to test
+	 * @var FetchText The (mocked) FetchText that is to test
 	 */
 	private $fetchText;
 
 	/**
 	 * Adds a revision to a page, while returning the resuting text's id
 	 *
-	 * @param $page WikiPage The page to add the revision to
-	 * @param $text String The revisions text
-	 * @param $text String The revisions summare
-	 *
-	 * @throws MWExcepion
+	 * @param WikiPage $page The page to add the revision to
+	 * @param string $text The revisions text
+	 * @param string $summary The revisions summare
+	 * @return int
+	 * @throws MWException
 	 */
 	private function addRevision( $page, $text, $summary ) {
-		$status = $page->doEditContent( ContentHandler::makeContent( $text, $page->getTitle() ), $summary );
+		$status = $page->doEditContent(
+			ContentHandler::makeContent( $text, $page->getTitle() ),
+			$summary
+		);
+
 		if ( $status->isGood() ) {
 			$value = $status->getValue();
 			$revision = $value['revision'];
 			$id = $revision->getTextId();
+
 			if ( $id > 0 ) {
 				return $id;
 			}
 		}
+
 		throw new MWException( "Could not determine text id" );
 	}
 
-	function addDBData() {
-		$this->tablesUsed[] = 'page';
-		$this->tablesUsed[] = 'revision';
-		$this->tablesUsed[] = 'text';
-
+	function addDBDataOnce() {
 		$wikitextNamespace = $this->getDefaultWikitextNS();
 
 		try {
 			$title = Title::newFromText( 'FetchTextTestPage1', $wikitextNamespace );
 			$page = WikiPage::factory( $title );
-			$this->textId1 = $this->addRevision( $page, "FetchTextTestPage1Text1", "FetchTextTestPage1Summary1" );
+			self::$textId1 = $this->addRevision(
+				$page,
+				"FetchTextTestPage1Text1",
+				"FetchTextTestPage1Summary1"
+			);
 
 			$title = Title::newFromText( 'FetchTextTestPage2', $wikitextNamespace );
 			$page = WikiPage::factory( $title );
-			$this->textId2 = $this->addRevision( $page, "FetchTextTestPage2Text1", "FetchTextTestPage2Summary1" );
-			$this->textId3 = $this->addRevision( $page, "FetchTextTestPage2Text2", "FetchTextTestPage2Summary2" );
-			$this->textId4 = $this->addRevision( $page, "FetchTextTestPage2Text3", "FetchTextTestPage2Summary3" );
-			$this->textId5 = $this->addRevision( $page, "FetchTextTestPage2Text4 some additional Text  ", "FetchTextTestPage2Summary4 extra " );
+			self::$textId2 = $this->addRevision(
+				$page,
+				"FetchTextTestPage2Text1",
+				"FetchTextTestPage2Summary1"
+			);
+			self::$textId3 = $this->addRevision(
+				$page,
+				"FetchTextTestPage2Text2",
+				"FetchTextTestPage2Summary2"
+			);
+			self::$textId4 = $this->addRevision(
+				$page,
+				"FetchTextTestPage2Text3",
+				"FetchTextTestPage2Summary3"
+			);
+			self::$textId5 = $this->addRevision(
+				$page,
+				"FetchTextTestPage2Text4 some additional Text  ",
+				"FetchTextTestPage2Summary4 extra "
+			);
 		} catch ( Exception $e ) {
 			// We'd love to pass $e directly. However, ... see
-			// documentation of exceptionFromAddDBData
-			$this->exceptionFromAddDBData = $e;
+			// documentation of exceptionFromAddDBDataOnce
+			self::$exceptionFromAddDBDataOnce = $e;
 		}
 	}
 
@@ -146,8 +178,8 @@ class FetchTextTest extends MediaWikiTestCase {
 		parent::setUp();
 
 		// Check if any Exception is stored for rethrowing from addDBData
-		if ( $this->exceptionFromAddDBData !== null ) {
-			throw $this->exceptionFromAddDBData;
+		if ( self::$exceptionFromAddDBDataOnce !== null ) {
+			throw self::$exceptionFromAddDBDataOnce;
 		}
 
 		$this->fetchText = new SemiMockedFetchText();
@@ -155,6 +187,8 @@ class FetchTextTest extends MediaWikiTestCase {
 
 	/**
 	 * Helper to relate FetchText's input and output
+	 * @param string $input
+	 * @param string $expectedOutput
 	 */
 	private function assertFilter( $input, $expectedOutput ) {
 		$this->fetchText->mockStdin( $input );
@@ -170,25 +204,30 @@ class FetchTextTest extends MediaWikiTestCase {
 	// provider would not know the required ids.
 
 	function testExistingSimple() {
-		$this->assertFilter( $this->textId2,
-			$this->textId2 . "\n23\nFetchTextTestPage2Text1" );
+		$this->assertFilter( self::$textId2,
+			self::$textId2 . "\n23\nFetchTextTestPage2Text1" );
 	}
 
 	function testExistingSimpleWithNewline() {
-		$this->assertFilter( $this->textId2 . "\n",
-			$this->textId2 . "\n23\nFetchTextTestPage2Text1" );
+		$this->assertFilter( self::$textId2 . "\n",
+			self::$textId2 . "\n23\nFetchTextTestPage2Text1" );
 	}
 
 	function testExistingSeveral() {
-		$this->assertFilter( "$this->textId1\n$this->textId5\n"
-				. "$this->textId3\n$this->textId3",
-			implode( "", array(
-				$this->textId1 . "\n23\nFetchTextTestPage1Text1",
-				$this->textId5 . "\n44\nFetchTextTestPage2Text4 "
+		$this->assertFilter(
+			implode( "\n", [
+				self::$textId1,
+				self::$textId5,
+				self::$textId3,
+				self::$textId3,
+			] ),
+			implode( '', [
+				self::$textId1 . "\n23\nFetchTextTestPage1Text1",
+				self::$textId5 . "\n44\nFetchTextTestPage2Text4 "
 					. "some additional Text",
-				$this->textId3 . "\n23\nFetchTextTestPage2Text2",
-				$this->textId3 . "\n23\nFetchTextTestPage2Text2"
-			) ) );
+				self::$textId3 . "\n23\nFetchTextTestPage2Text2",
+				self::$textId3 . "\n23\nFetchTextTestPage2Text2"
+			] ) );
 	}
 
 	function testEmpty() {
@@ -196,7 +235,7 @@ class FetchTextTest extends MediaWikiTestCase {
 	}
 
 	function testNonExisting() {
-		$this->assertFilter( $this->textId5 + 10, ( $this->textId5 + 10 ) . "\n-1\n" );
+		$this->assertFilter( self::$textId5 + 10, ( self::$textId5 + 10 ) . "\n-1\n" );
 	}
 
 	function testNegativeInteger() {
@@ -205,13 +244,13 @@ class FetchTextTest extends MediaWikiTestCase {
 
 	function testFloatingPointNumberExisting() {
 		// float -> int -> revision
-		$this->assertFilter( $this->textId3 + 0.14159,
-			$this->textId3 . "\n23\nFetchTextTestPage2Text2" );
+		$this->assertFilter( self::$textId3 + 0.14159,
+			self::$textId3 . "\n23\nFetchTextTestPage2Text2" );
 	}
 
 	function testFloatingPointNumberNonExisting() {
-		$this->assertFilter( $this->textId5 + 3.14159,
-			( $this->textId5 + 3 ) . "\n-1\n" );
+		$this->assertFilter( self::$textId5 + 3.14159,
+			( self::$textId5 + 3 ) . "\n-1\n" );
 	}
 
 	function testCharacters() {
@@ -219,15 +258,15 @@ class FetchTextTest extends MediaWikiTestCase {
 	}
 
 	function testMix() {
-		$this->assertFilter( "ab\n" . $this->textId4 . ".5cd\n\nefg\n" . $this->textId2
-				. "\n" . $this->textId3,
-			implode( "", array(
+		$this->assertFilter( "ab\n" . self::$textId4 . ".5cd\n\nefg\n" . self::$textId2
+				. "\n" . self::$textId3,
+			implode( "", [
 				"0\n-1\n",
-				$this->textId4 . "\n23\nFetchTextTestPage2Text3",
+				self::$textId4 . "\n23\nFetchTextTestPage2Text3",
 				"0\n-1\n",
 				"0\n-1\n",
-				$this->textId2 . "\n23\nFetchTextTestPage2Text1",
-				$this->textId3 . "\n23\nFetchTextTestPage2Text2"
-			) ) );
+				self::$textId2 . "\n23\nFetchTextTestPage2Text1",
+				self::$textId3 . "\n23\nFetchTextTestPage2Text2"
+			] ) );
 	}
 }

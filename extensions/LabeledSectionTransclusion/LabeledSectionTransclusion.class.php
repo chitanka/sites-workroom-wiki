@@ -2,72 +2,75 @@
 
 class LabeledSectionTransclusion {
 
-	private static $loopCheck = array();
+	/**
+	 * MediaWiki supports localisation for the three kinds of magic words,
+	 * such as variable {{NAME}}, behaviours __NAME__, and parser functions
+	 * {{#name}}, but it does not support localisation of tag hooks, such
+	 * as <name>. Work around that limitation by performing the localisation
+	 * at run-time when calling Parser::setHook().
+	 */
+	private static $hookTranslation = [
+		'de' => [
+			// Tag name
+			'section' => 'Abschnitt',
+			// Tag attributes
+			'begin' => 'Anfang',
+			'end' => 'Ende',
+		],
+		'he' => [
+			'section' => 'קטע',
+			'begin' => 'התחלה',
+			'end' => 'סוף',
+		],
+		'pt' => [
+			'section' => 'trecho',
+			'begin' => 'começo',
+			'end' => 'fim',
+		],
+	];
 
 	/**
-	 * @param $parser Parser
+	 * Get local name for tag or tag attribute (based on content language)
+	 * @param string $key
+	 * @return string|null
+	 */
+	private static function getLocalName( $key ) {
+		global $wgLanguageCode;
+		return self::$hookTranslation[$wgLanguageCode][$key] ?? null;
+	}
+
+	private static $loopCheck = [];
+
+	/**
+	 * @param Parser $parser
 	 * @return bool
 	 */
-	static function setup( $parser ) {
-		$parser->setHook( 'section', array( __CLASS__, 'noop' ) );
-		$parser->setFunctionHook( 'lst', array( __CLASS__, 'pfuncIncludeObj' ), SFH_OBJECT_ARGS );
-		$parser->setFunctionHook( 'lstx', array( __CLASS__, 'pfuncExcludeObj' ), SFH_OBJECT_ARGS );
+	public static function setup( $parser ) {
+		$parser->setHook( 'section', [ __CLASS__, 'noop' ] );
+		// Register the localized version of <section> as a noop as well
+		$localName = self::getLocalName( 'section' );
+		if ( $localName !== null ) {
+			$parser->setHook( $localName, [ __CLASS__, 'noop' ] );
+		}
+		$parser->setFunctionHook( 'lst', [ __CLASS__, 'pfuncIncludeObj' ], Parser::SFH_OBJECT_ARGS );
+		$parser->setFunctionHook( 'lstx', [ __CLASS__, 'pfuncExcludeObj' ], Parser::SFH_OBJECT_ARGS );
+		$parser->setFunctionHook( 'lsth', [ __CLASS__, 'pfuncIncludeHeading' ] );
 
 		return true;
 	}
 
-	/**
-	 * Add the magic words - possibly with more readable aliases
-	 *
-	 * @param $magicWords array
-	 * @param $langCode string
-	 * @return bool
+	/*
+	 * To do transclusion from an extension, we need to interact with the parser
+	 * at a low level. This is the general transclusion functionality
 	 */
-	static function setupMagic( &$magicWords, $langCode ) {
-		global $wgParser, $wgLstLocal;
-
-		switch( $langCode ) {
-			case 'de':
-				$include = 'Abschnitt';
-				$exclude = 'Abschnitt-x';
-				$wgLstLocal = array( 'section' => 'Abschnitt', 'begin' => 'Anfang', 'end' => 'Ende' ) ;
-				break;
-			case 'he':
-				$include = 'קטע';
-				$exclude = 'בלי קטע';
-				$wgLstLocal = array( 'section' => 'קטע', 'begin' => 'התחלה', 'end' => 'סוף' ) ;
-				break;
-			case 'pt':
-				$include = 'trecho';
-				$exclude = 'trecho-x';
-				$wgLstLocal = array( 'section' => 'trecho', 'begin' => 'começo', 'end' => 'fim' );
-				break;
-		}
-
-		if ( isset( $include ) && isset( $exclude ) ) {
-			$magicWords['lst'] = array( 0, 'lst', 'section', $include );
-			$magicWords['lstx'] = array( 0, 'lstx', 'section-x', $exclude );
-			$wgParser->setHook( $include, array( __CLASS__, 'noop' ) );
-		} else {
-			$magicWords['lst'] = array( 0, 'lst', 'section' );
-			$magicWords['lstx'] = array( 0, 'lstx', 'section-x' );
-		}
-
-		return true;
-	}
-
-	##############################################################
-	# To do transclusion from an extension, we need to interact with the parser
-	# at a low level. This is the general transclusion functionality
-	##############################################################
 
 	/**
 	 * Register what we're working on in the parser, so we don't fall into a trap.
-	 * @param $parser Parser
-	 * @param $part1
+	 * @param Parser $parser
+	 * @param string $part1
 	 * @return bool
 	 */
-	static function open_( $parser, $part1 ) {
+	private static function open_( $parser, $part1 ) {
 		// Infinite loop test
 		if ( isset( $parser->mTemplatePath[$part1] ) ) {
 			wfDebug( __METHOD__ . ": template loop broken at '$part1'\n" );
@@ -76,16 +79,14 @@ class LabeledSectionTransclusion {
 			$parser->mTemplatePath[$part1] = 1;
 			return true;
 		}
-
 	}
 
 	/**
 	 * Finish processing the function.
-	 * @param $parser Parser
-	 * @param $part1
-	 * @return bool
+	 * @param Parser $parser
+	 * @param string $part1
 	 */
-	static function close_( $parser, $part1 ) {
+	private static function close_( $parser, $part1 ) {
 		// Infinite loop test
 		if ( isset( $parser->mTemplatePath[$part1] ) ) {
 			unset( $parser->mTemplatePath[$part1] );
@@ -104,27 +105,25 @@ class LabeledSectionTransclusion {
 	 * @param int $skiphead Number of source string headers to skip for numbering
 	 * @return mixed string or magic array of bits
 	 * @todo handle mixed-case </section>
-	 * @private
 	 */
-	static function parse_( $parser, $title, $text, $part1, $skiphead = 0 ) {
+	private static function parse_( $parser, $title, $text, $part1, $skiphead = 0 ) {
 		// if someone tries something like<section begin=blah>lst only</section>
 		// text, may as well do the right thing.
 		$text = str_replace( '</section>', '', $text );
 
 		if ( self::open_( $parser, $part1 ) ) {
 			// Try to get edit sections correct by munging around the parser's guts.
-			return array( $text, 'title' => $title, 'replaceHeadings' => true,
-				'headingOffset' => $skiphead, 'noparse' => false, 'noargs' => false );
+			return [ $text, 'title' => $title, 'replaceHeadings' => true,
+				'headingOffset' => $skiphead, 'noparse' => false, 'noargs' => false ];
 		} else {
 			return "[[" . $title->getPrefixedText() . "]]" .
 				"<!-- WARNING: LST loop detected -->";
 		}
-
 	}
 
-	##############################################################
-	# And now, the labeled section transclusion
-	##############################################################
+	/*
+	 * And now, the labeled section transclusion
+	 */
 
 	/**
 	 * Parser tag hook for <section>.
@@ -132,10 +131,10 @@ class LabeledSectionTransclusion {
 	 *
 	 * @param string $in
 	 * @param array $assocArgs
-	 * @param Parser $parser
+	 * @param Parser|null $parser
 	 * @return string HTML output
 	 */
-	static function noop( $in, $assocArgs = array(), $parser = null ) {
+	public static function noop( $in, $assocArgs = [], $parser = null ) {
 		return '';
 	}
 
@@ -146,11 +145,8 @@ class LabeledSectionTransclusion {
 	 *                   multiple sections in sequence. If blank, will assume
 	 *                   same section name as started with.
 	 * @return string regex
-	 * @private
 	 */
-	static function getPattern_( $sec, $to ) {
-		global $wgLstLocal;
-
+	private static function getPattern_( $sec, $to ) {
 		$beginAttr = self::getAttrPattern_( $sec, 'begin' );
 		if ( $to == '' ) {
 			$endAttr = self::getAttrPattern_( $sec, 'end' );
@@ -158,11 +154,12 @@ class LabeledSectionTransclusion {
 			$endAttr = self::getAttrPattern_( $to, 'end' );
 		}
 
-		if ( isset( $wgLstLocal ) ) {
-			$section_re = "(?i:section|$wgLstLocal[section])";
-		} else {
-			$section_re = "(?i:section)";
+		$sections = [ 'section' ];
+		$localName = self::getLocalName( 'section' );
+		if ( $localName !== null ) {
+			$sections[] = $localName;
 		}
+		$section_re = '(?i:' . implode( '|', $sections ) . ')';
 
 		return "/<$section_re$beginAttr\/?>(.*?)\n?<$section_re$endAttr\/?>/s";
 	}
@@ -173,23 +170,15 @@ class LabeledSectionTransclusion {
 	 * @param string $type Either "begin" or "end" depending on the type of section tag to be matched
 	 * @return string
 	 */
-	static function getAttrPattern_( $sec, $type ) {
-		global $wgLstLocal;
+	private static function getAttrPattern_( $sec, $type ) {
 		$sec = preg_quote( $sec, '/' );
 		$ws = "(?:\s+[^>]*)?"; // was like $ws="\s*"
-		if ( isset( $wgLstLocal ) ) {
-			if ( $type == 'begin' ) {
-				$attrName = "(?i:begin|{$wgLstLocal['begin']})";
-			} else {
-				$attrName = "(?i:end|{$wgLstLocal['end']})";
-			}
-		} else {
-			if ( $type == 'begin' ) {
-				$attrName = "(?i:begin)";
-			} else {
-				$attrName = "(?i:end)";
-			}
+		$attrs = [ $type ];
+		$localName = self::getLocalName( $type );
+		if ( $localName !== null ) {
+			$attrs[] = $localName;
 		}
+		$attrName = '(?i:' . implode( '|', $attrs ) . ')';
 		return "$ws\s+$attrName=(?:$sec|\"$sec\"|'$sec')$ws";
 	}
 
@@ -202,14 +191,13 @@ class LabeledSectionTransclusion {
 	 * @param string $text
 	 * @param int $limit Cutoff point in the text to stop searching
 	 * @return int Number of matches
-	 * @private
 	 */
-	static function countHeadings_( $text, $limit ) {
+	private static function countHeadings_( $text, $limit ) {
 		$pat = '^(={1,6}).+\1\s*$()';
 
 		$count = 0;
 		$offset = 0;
-		$m = array();
+		$m = [];
 		while ( preg_match( "/$pat/im", $text, $m, PREG_OFFSET_CAPTURE, $offset ) ) {
 			if ( $m[2][1] > $limit ) {
 				break;
@@ -228,12 +216,11 @@ class LabeledSectionTransclusion {
 	 *
 	 * @param Parser $parser
 	 * @param string $page title text of target page
-	 * @param (out) Title $title normalized title object
-	 * @param (out) string $text wikitext output
+	 * @param Title &$title normalized title object
+	 * @param string &$text wikitext output
 	 * @return string bool true if returning text, false if target not found
-	 * @private
 	 */
-	static function getTemplateText_( $parser, $page, &$title, &$text )	{
+	private static function getTemplateText_( $parser, $page, &$title, &$text ) {
 		$title = Title::newFromText( $page );
 
 		if ( is_null( $title ) ) {
@@ -258,13 +245,13 @@ class LabeledSectionTransclusion {
 
 	/**
 	 * Set up some variables for MW-1.12 parser functions
-	 * @param $parser Parser
-	 * @param $frame PPFrame
-	 * @param $args array
-	 * @param $func string
+	 * @param Parser $parser
+	 * @param PPFrame $frame
+	 * @param array $args
+	 * @param string $func
 	 * @return array|string
 	 */
-	static function setupPfunc12( $parser, $frame, $args, $func = 'lst' ) {
+	private static function setupPfunc12( $parser, $frame, $args, $func = 'lst' ) {
 		if ( !count( $args ) ) {
 			return '';
 		}
@@ -273,10 +260,11 @@ class LabeledSectionTransclusion {
 		if ( !$title ) {
 			return '';
 		}
-                if ( !$frame->loopCheck( $title ) ) {
-                        return '<span class="error">'
-                               . wfMessage( 'parser-template-loop-warning', $title->getPrefixedText() )->inContentLanguage()->text()
-                               . '</span>';
+		if ( !$frame->loopCheck( $title ) ) {
+			return '<span class="error">'
+				. wfMessage( 'parser-template-loop-warning', $title->getPrefixedText() )
+					->inContentLanguage()->text()
+				. '</span>';
 		}
 
 		list( $root, $finalTitle ) = $parser->getTemplateDom( $title );
@@ -293,6 +281,7 @@ class LabeledSectionTransclusion {
 
 		$begin = trim( $frame->expand( array_shift( $args ) ) );
 
+		$repl = null;
 		if ( $func == 'lstx' ) {
 			if ( !count( $args ) ) {
 				$repl = '';
@@ -312,27 +301,31 @@ class LabeledSectionTransclusion {
 		$endAttr = self::getAttrPattern_( $end, 'end' );
 		$endRegex = "/^$endAttr$/s";
 
-		return compact( 'dom', 'root', 'newFrame', 'repl', 'beginRegex', 'begin', 'endRegex' );
+		return compact( 'root', 'newFrame', 'repl', 'beginRegex', 'begin', 'endRegex' );
 	}
 
 	/**
 	 * Returns true if the given extension name is "section"
+	 * @param string $name
+	 * @return bool
 	 */
-	static function isSection( $name ) {
-		global $wgLstLocal;
+	private static function isSection( $name ) {
 		$name = strtolower( $name );
-		return $name == 'section'
-			|| ( isset( $wgLstLocal['section'] ) && strtolower( $wgLstLocal['section'] ) == $name );
+		$sectionLocal = self::getLocalName( 'section' );
+		return (
+			$name === 'section'
+			|| ( $sectionLocal !== null && $name === strtolower( $sectionLocal ) )
+		);
 	}
 
 	/**
 	 * Returns the text for the inside of a split <section> node
-	 * @param $parser Parser
-	 * @param $frame PPFrame
-	 * @param $parts array
+	 * @param Parser $parser
+	 * @param PPFrame $frame
+	 * @param array $parts
 	 * @return string
 	 */
-	static function expandSectionNode( $parser, $frame, $parts ) {
+	private static function expandSectionNode( $parser, $frame, $parts ) {
 		if ( isset( $parts['inner'] ) ) {
 			return $parser->replaceVariables( $parts['inner'], $frame );
 		} else {
@@ -341,12 +334,12 @@ class LabeledSectionTransclusion {
 	}
 
 	/**
-	 * @param $parser Parser
-	 * @param $frame PPFrame
-	 * @param $args array
+	 * @param Parser $parser
+	 * @param PPFrame $frame
+	 * @param array $args
 	 * @return array|string
 	 */
-	static function pfuncIncludeObj( $parser, $frame, $args ) {
+	public static function pfuncIncludeObj( $parser, $frame, $args ) {
 		$setup = self::setupPfunc12( $parser, $frame, $args, 'lst' );
 		if ( !is_array( $setup ) ) {
 			return $setup;
@@ -366,6 +359,7 @@ class LabeledSectionTransclusion {
 
 		$text = '';
 		$node = $root->getFirstChild();
+		// @codingStandardsIgnoreStart
 		while ( $node ) {
 			// If the name of the begin node was specified, find it.
 			// Otherwise transclude everything from the beginning of the page.
@@ -377,7 +371,7 @@ class LabeledSectionTransclusion {
 						continue;
 					}
 					$parts = $node->splitExt();
-					$parts = array_map( array( $newFrame, 'expand' ), $parts );
+					$parts = array_map( [ $newFrame, 'expand' ], $parts );
 					if ( self::isSection( $parts['name'] ) ) {
 						if ( preg_match( $beginRegex, $parts['attr'] ) ) {
 							$found = true;
@@ -395,7 +389,7 @@ class LabeledSectionTransclusion {
 			for ( ; $node; $node = $node->getNextSibling() ) {
 				if ( $node->getName() === 'ext' ) {
 					$parts = $node->splitExt();
-					$parts = array_map( array( $newFrame, 'expand' ), $parts );
+					$parts = array_map( [ $newFrame, 'expand' ], $parts );
 					if ( self::isSection( $parts['name'] ) ) {
 						if ( preg_match( $endRegex, $parts['attr'] ) ) {
 							$found = true;
@@ -412,23 +406,24 @@ class LabeledSectionTransclusion {
 			if ( !$found ) {
 				break;
 			} elseif ( $begin == '' ) {
-				// When the end node was found and text is transcluded from 
+				// When the end node was found and text is transcluded from
 				// the beginning of the page, finish the transclusion
 				break;
 			}
 
 			$node = $node->getNextSibling();
 		}
+		// @codingStandardsIgnoreEnd
 		return $text;
 	}
 
 	/**
-	 * @param $parser Parser
-	 * @param $frame PPFrame
-	 * @param $args array
+	 * @param Parser $parser
+	 * @param PPFrame $frame
+	 * @param array $args
 	 * @return array|string
 	 */
-	static function pfuncExcludeObj( $parser, $frame, $args ) {
+	public static function pfuncExcludeObj( $parser, $frame, $args ) {
 		$setup = self::setupPfunc12( $parser, $frame, $args, 'lstx' );
 		if ( !is_array( $setup ) ) {
 			return $setup;
@@ -447,13 +442,14 @@ class LabeledSectionTransclusion {
 		$repl = $setup['repl'];
 
 		$text = '';
+		// @codingStandardsIgnoreStart
 		for ( $node = $root->getFirstChild(); $node; $node = $node ? $node->getNextSibling() : false ) {
 			// Search for the start tag
 			$found = false;
 			for ( ; $node; $node = $node->getNextSibling() ) {
 				if ( $node->getName() == 'ext' ) {
 					$parts = $node->splitExt();
-					$parts = array_map( array( $newFrame, 'expand' ), $parts );
+					$parts = array_map( [ $newFrame, 'expand' ], $parts );
 					if ( self::isSection( $parts['name'] ) ) {
 						if ( preg_match( $beginRegex, $parts['attr'] ) ) {
 							$found = true;
@@ -479,7 +475,7 @@ class LabeledSectionTransclusion {
 			for ( ; $node; $node = $node->getNextSibling() ) {
 				if ( $node->getName() == 'ext' ) {
 					$parts = $node->splitExt( $node );
-					$parts = array_map( array( $newFrame, 'expand' ), $parts );
+					$parts = array_map( [ $newFrame, 'expand' ], $parts );
 					if ( self::isSection( $parts['name'] ) ) {
 						if ( preg_match( $endRegex, $parts['attr'] ) ) {
 							$text .= self::expandSectionNode( $parser, $newFrame, $parts );
@@ -489,7 +485,75 @@ class LabeledSectionTransclusion {
 				}
 			}
 		}
+		// @codingStandardsIgnoreEnd
 		return $text;
 	}
-}
 
+	/**
+	 * section inclusion - include all matching sections
+	 *
+	 * A parser extension that further extends labeled section transclusion,
+	 * adding a function, #lsth for transcluding marked sections of text,
+	 *
+	 * @todo MW 1.12 version, as per #lst/#lstx
+	 *
+	 * @param Parser $parser
+	 * @param string $page
+	 * @param string $sec
+	 * @param string $to
+	 * @return mixed|string
+	 */
+	public static function pfuncIncludeHeading( $parser, $page = '', $sec = '', $to = '' ) {
+		if ( self::getTemplateText_( $parser, $page, $title, $text ) == false ) {
+			return $text;
+		}
+
+		// Generate a regex to match the === classical heading section(s) === we're
+		// interested in.
+		if ( $sec == '' ) {
+			$begin_off = 0;
+			$head_len = 6;
+		} else {
+			$pat = '^(={1,6})\s*' . preg_quote( $sec, '/' ) . '\s*\1\s*($)';
+			if ( preg_match( "/$pat/im", $text, $m, PREG_OFFSET_CAPTURE ) ) {
+				$begin_off = $m[2][1];
+				$head_len = strlen( $m[1][0] );
+			} else {
+				return '';
+			}
+
+		}
+
+		if ( $to != '' ) {
+			// if $to is supplied, try and match it. If we don't match, just
+			// ignore it.
+			$pat = '^(={1,6})\s*' . preg_quote( $to, '/' ) . '\s*\1\s*$';
+			if ( preg_match( "/$pat/im", $text, $m, PREG_OFFSET_CAPTURE, $begin_off ) ) {
+				$end_off = $m[0][1] - 1;
+			}
+		}
+
+		if ( !isset( $end_off ) ) {
+			$pat = '^(={1,' . $head_len . '})(?!=).*?\1\s*$';
+			if ( preg_match( "/$pat/im", $text, $m, PREG_OFFSET_CAPTURE, $begin_off ) ) {
+				$end_off = $m[0][1] - 1;
+			}
+		}
+
+		$nhead = self::countHeadings_( $text, $begin_off );
+
+		if ( isset( $end_off ) ) {
+			$result = substr( $text, $begin_off, $end_off - $begin_off );
+		} else {
+			$result = substr( $text, $begin_off );
+		}
+
+		if ( method_exists( $parser, 'getPreprocessor' ) ) {
+			$frame = $parser->getPreprocessor()->newFrame();
+			$dom = $parser->preprocessToDom( $result, Parser::PTD_FOR_INCLUSION );
+			$result = $frame->expand( $dom );
+		}
+
+		return self::parse_( $parser, $title, $result, "#lsth:${page}|${sec}", $nhead );
+	}
+}
